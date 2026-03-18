@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 type ExtractResult = {
@@ -15,20 +16,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ExtractResult | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
+  const router = useRouter();
+  void result;
 
   const isValidInput = useMemo(() => url.trim().length > 0, [url]);
-
-  async function copyText(text: string, label: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(label);
-      window.setTimeout(() => setCopied(null), 1500);
-    } catch {
-      setCopied("Copy failed");
-      window.setTimeout(() => setCopied(null), 1500);
-    }
-  }
 
   async function handleDownload() {
     const trimmed = url.trim();
@@ -54,17 +45,24 @@ export default function Home() {
         if (typeof data === "object" && data !== null) {
           const maybeMessage = (data as { message?: unknown }).message;
           if (typeof maybeMessage === "string" && maybeMessage.trim()) {
-            setError(maybeMessage);
             const streamUrl = (data as { stream_url?: unknown }).stream_url;
             const title = (data as { title?: unknown }).title;
             const thumbnail = (data as { thumbnail?: unknown }).thumbnail;
             if (typeof streamUrl === "string" && streamUrl.trim()) {
-              setResult({
+              const extracted = {
                 title: typeof title === "string" && title.trim() ? title : "Pinterest Video",
                 thumbnail: typeof thumbnail === "string" ? thumbnail : null,
                 stream_url: streamUrl,
-              });
+              } satisfies ExtractResult;
+              setResult(extracted);
+              sessionStorage.setItem(
+                "pinterest_video_data",
+                JSON.stringify({ ...extracted, source_url: trimmed })
+              );
+              router.push("/download");
+              return;
             }
+            setError(maybeMessage);
             return;
           }
         }
@@ -90,7 +88,13 @@ export default function Home() {
         return;
       }
 
-      setResult(data as ExtractResult);
+      const extracted = data as ExtractResult;
+      setResult(extracted);
+      sessionStorage.setItem(
+        "pinterest_video_data",
+        JSON.stringify({ ...extracted, source_url: trimmed })
+      );
+      router.push("/download");
     } catch {
       setError(
         "Response parse error. Local dev मध्ये Python API serve होत नाही. 'vercel dev' वापरून try करा."
@@ -179,7 +183,7 @@ export default function Home() {
                     {loading ? (
                       <>
                         <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/90 border-t-transparent" />
-                        Loading...
+                        Processing...
                       </>
                     ) : (
                       "Download"
@@ -192,109 +196,6 @@ export default function Home() {
                 <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
                   {error}
                 </div>
-              ) : null}
-              {copied ? (
-                <div className="mt-3 text-sm text-zinc-600">{copied}</div>
-              ) : null}
-
-              {result ? (
-                <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
-                    <div className="w-full sm:w-52">
-                      {result.thumbnail ? (
-                        <img
-                          src={result.thumbnail}
-                          alt={result.title}
-                          className="aspect-[4/3] w-full rounded-2xl border border-zinc-200 object-cover"
-                        />
-                      ) : (
-                        <div className="aspect-[4/3] w-full rounded-2xl border border-zinc-200 bg-zinc-100" />
-                      )}
-                    </div>
-
-                    <div className="flex w-full flex-col gap-3">
-                      <h2 className="text-lg font-semibold leading-snug">
-                        {result.title}
-                      </h2>
-                      <div className="flex flex-col gap-3">
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {result.video_url ? (
-                            <a
-                              href={result.video_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#E60023] px-5 font-semibold text-white transition-colors hover:bg-[#c7001f]"
-                            >
-                              Direct MP4 Download
-                            </a>
-                          ) : result.stream_url ? (
-                            <>
-                              <a
-                                href={`/api/hls?url=${encodeURIComponent(
-                                  result.stream_url
-                                )}&title=${encodeURIComponent(result.title)}`}
-                                className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#E60023] px-5 font-semibold text-white transition-colors hover:bg-[#c7001f]"
-                              >
-                                Download HLS (.ts)
-                              </a>
-                              <a
-                                href={result.stream_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
-                              >
-                                Open HLS
-                              </a>
-                            </>
-                          ) : null}
-                          <a
-                            href={url.trim()}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
-                          >
-                            Open Pinterest
-                          </a>
-                          {result.stream_url ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  copyText(
-                                    `ffmpeg -i "${result.stream_url}" -c copy "${result.title}.mp4"`,
-                                    "FFmpeg command copied"
-                                  )
-                                }
-                                className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
-                              >
-                                Copy FFmpeg
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  copyText(
-                                    `yt-dlp -o "%(title)s.%(ext)s" "${result.stream_url}"`,
-                                    "yt-dlp command copied"
-                                  )
-                                }
-                                className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
-                              >
-                                Copy yt-dlp
-                              </button>
-                            </>
-                          ) : null}
-                        </div>
-                      </div>
-                      <p className="text-sm text-zinc-500">
-                        {result.video_url
-                          ? "If the download doesn’t start automatically, open the direct link and save the video from your browser."
-                          : result.stream_url
-                            ? "MP4 available नाही, पण app HLS (.m3u8) ला .ts म्हणून download करू शकतो. नंतर ffmpeg/yt-dlp ने MP4 मध्ये convert करा."
-                            : ""}
-                      </p>
-                    </div>
-                  </div>
-                </section>
               ) : null}
             </div>
           </div>
