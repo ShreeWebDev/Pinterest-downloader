@@ -64,16 +64,29 @@ def _is_pinterest_url(url: str) -> bool:
     return host == "pin.it" or host.endswith(".pin.it") or host == "pinterest.com" or host.endswith(".pinterest.com")
 
 
+def _looks_like_direct_mp4(u: str) -> bool:
+    if not isinstance(u, str) or not u:
+        return False
+    ul = u.lower()
+    if ".m3u8" in ul:
+        return False
+    return bool(re.search(r"\.mp4(\?|$)", ul))
+
+
 def _pick_best_mp4_url(info: dict) -> str:
     formats = info.get("formats") or []
     candidates = []
     for f in formats:
         if not isinstance(f, dict):
             continue
-        if f.get("ext") != "mp4":
-            continue
         url = f.get("url")
         if not url:
+            continue
+        ext = (f.get("ext") or "").lower()
+        mime_type = (f.get("mime_type") or "").lower()
+        if ext != "mp4" and "video/mp4" not in mime_type and not _looks_like_direct_mp4(url):
+            continue
+        if ".m3u8" in str(url).lower():
             continue
         height = f.get("height") or 0
         tbr = f.get("tbr") or 0
@@ -88,7 +101,7 @@ def _pick_best_mp4_url(info: dict) -> str:
     direct_url = info.get("url")
     if isinstance(direct_url, str) and direct_url:
         ext = info.get("ext")
-        if ext == "mp4" or direct_url.endswith(".mp4"):
+        if ext == "mp4" or _looks_like_direct_mp4(direct_url):
             return direct_url
     return ""
 
@@ -190,34 +203,57 @@ class handler(BaseHTTPRequestHandler):
         if not _is_pinterest_url(url):
             return _json_response(self, 400, {"error": "INVALID_DOMAIN", "message": "Only Pinterest URLs are supported."})
 
-        ydl_opts = {
+        ydl_opts_primary = {
             "quiet": True,
             "no_warnings": True,
             "skip_download": True,
             "noplaylist": True,
             "format": "best[ext=mp4]/best",
         }
+        ydl_opts_secondary = {
+            "quiet": True,
+            "no_warnings": True,
+            "skip_download": True,
+            "noplaylist": True,
+        }
 
         try:
-            with YoutubeDL(ydl_opts) as ydl:
+            with YoutubeDL(ydl_opts_primary) as ydl:
                 info = ydl.extract_info(url, download=False)
-        except DownloadError:
+        except DownloadError as e:
             try:
-                fallback = _extract_from_html(url)
-                if fallback.get("video_url"):
-                    return _json_response(self, 200, fallback)
-            except (HTTPError, URLError):
-                pass
+                with YoutubeDL(ydl_opts_secondary) as ydl:
+                    info = ydl.extract_info(url, download=False)
+            except DownloadError:
+                try:
+                    fallback = _extract_from_html(url)
+                    if fallback.get("video_url"):
+                        return _json_response(self, 200, fallback)
+                except (HTTPError, URLError):
+                    pass
+                except Exception:
+                    pass
+                message = str(e) or "Failed to extract a video from that Pinterest URL."
+                if "Requested format is not available" in message:
+                    message = (
+                        "This Pinterest link didn't expose a direct MP4 format. "
+                        "Try a different pin or use a share link from the Pinterest app."
+                    )
+                return _json_response(
+                    self,
+                    422,
+                    {
+                        "error": "EXTRACTION_FAILED",
+                        "message": message,
+                    },
+                )
             except Exception:
-                pass
-            return _json_response(
-                self,
-                422,
-                {
-                    "error": "EXTRACTION_FAILED",
-                    "message": "Failed to extract a video from that Pinterest URL. Try another pin link or a share link from the Pinterest app.",
-                },
-            )
+                return _json_response(
+                    self,
+                    500,
+                    {"error": "INTERNAL_ERROR", "message": "Unexpected server error while extracting the video."},
+                )
+
         except Exception:
             return _json_response(
                 self,
@@ -239,6 +275,21 @@ class handler(BaseHTTPRequestHandler):
 
         video_url = _pick_best_mp4_url(info)
         if not video_url:
+            formats = info.get("formats") if isinstance(info, dict) else None
+            if isinstance(formats, list):
+                for f in formats:
+                    if not isinstance(f, dict):
+                        continue
+                    u = f.get("url")
+                    if isinstance(u, str) and ".m3u8" in u.lower():
+                        return _json_response(
+                            self,
+                            422,
+                            {
+                                "error": "NO_DIRECT_MP4",
+                                "message": "This Pinterest video appears to be streaming-only (HLS) and does not provide a direct MP4 download link.",
+                            },
+                        )
             return _json_response(
                 self,
                 422,
