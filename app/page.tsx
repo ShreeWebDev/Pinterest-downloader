@@ -14,8 +14,20 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ExtractResult | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
 
   const isValidInput = useMemo(() => url.trim().length > 0, [url]);
+
+  async function copyText(text: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(label);
+      window.setTimeout(() => setCopied(null), 1500);
+    } catch {
+      setCopied("Copy failed");
+      window.setTimeout(() => setCopied(null), 1500);
+    }
+  }
 
   async function onDownload() {
     const trimmed = url.trim();
@@ -138,6 +150,9 @@ export default function Home() {
                 {error}
               </div>
             ) : null}
+            {copied ? (
+              <div className="mt-3 text-sm text-zinc-600">{copied}</div>
+            ) : null}
           </div>
 
           {result ? (
@@ -170,14 +185,48 @@ export default function Home() {
                         Direct MP4 Download
                       </a>
                     ) : result.stream_url ? (
-                      <a
-                        href={result.stream_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex h-12 items-center justify-center rounded-2xl bg-red-600 px-5 font-semibold text-white transition-colors hover:bg-red-700"
-                      >
-                        Open HLS Stream
-                      </a>
+                      <>
+                        <a
+                          href={`/api/hls?url=${encodeURIComponent(
+                            result.stream_url
+                          )}&title=${encodeURIComponent(result.title)}`}
+                          className="inline-flex h-12 items-center justify-center rounded-2xl bg-red-600 px-5 font-semibold text-white transition-colors hover:bg-red-700"
+                        >
+                          Download HLS (.ts)
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            copyText(
+                              `ffmpeg -i "${result.stream_url}" -c copy "${result.title}.mp4"`,
+                              "FFmpeg command copied"
+                            )
+                          }
+                          className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
+                        >
+                          Copy FFmpeg
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            copyText(
+                              `yt-dlp -o "%(title)s.%(ext)s" "${result.stream_url}"`,
+                              "yt-dlp command copied"
+                            )
+                          }
+                          className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
+                        >
+                          Copy yt-dlp
+                        </button>
+                        <a
+                          href={result.stream_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
+                        >
+                          Open HLS
+                        </a>
+                      </>
                     ) : null}
                     <a
                       href={url.trim()}
@@ -192,7 +241,7 @@ export default function Home() {
                     {result.video_url
                       ? "If the download doesn’t start automatically, open the direct link and save the video from your browser."
                       : result.stream_url
-                        ? "This is an HLS stream (.m3u8). It may not download directly in a browser. You can open it in a player like VLC or use a downloader that supports HLS."
+                        ? "MP4 available नाही, पण app HLS (.m3u8) ला .ts म्हणून download करू शकतो. नंतर ffmpeg/yt-dlp ने MP4 मध्ये convert करा."
                         : ""}
                   </p>
                 </div>
