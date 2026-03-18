@@ -106,6 +106,28 @@ def _pick_best_mp4_url(info: dict) -> str:
     return ""
 
 
+def _pick_best_hls_url(info: dict) -> str:
+    formats = info.get("formats") or []
+    candidates = []
+    for f in formats:
+        if not isinstance(f, dict):
+            continue
+        url = f.get("url")
+        if not isinstance(url, str) or not url:
+            continue
+        if ".m3u8" not in url.lower():
+            continue
+        height = f.get("height") or 0
+        tbr = f.get("tbr") or 0
+        has_audio = 1 if (f.get("acodec") and f.get("acodec") != "none") else 0
+        has_video = 1 if (f.get("vcodec") and f.get("vcodec") != "none") else 0
+        candidates.append(((has_video, has_audio, height, tbr, len(url)), url))
+    if not candidates:
+        return ""
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    return candidates[0][1]
+
+
 def _fetch_html(url: str) -> str:
     req = Request(
         url,
@@ -275,21 +297,21 @@ class handler(BaseHTTPRequestHandler):
 
         video_url = _pick_best_mp4_url(info)
         if not video_url:
-            formats = info.get("formats") if isinstance(info, dict) else None
-            if isinstance(formats, list):
-                for f in formats:
-                    if not isinstance(f, dict):
-                        continue
-                    u = f.get("url")
-                    if isinstance(u, str) and ".m3u8" in u.lower():
-                        return _json_response(
-                            self,
-                            422,
-                            {
-                                "error": "NO_DIRECT_MP4",
-                                "message": "This Pinterest video appears to be streaming-only (HLS) and does not provide a direct MP4 download link.",
-                            },
-                        )
+            hls_url = _pick_best_hls_url(info)
+            if hls_url:
+                title = info.get("title") or "Pinterest Video"
+                thumbnail = info.get("thumbnail")
+                return _json_response(
+                    self,
+                    422,
+                    {
+                        "error": "NO_DIRECT_MP4",
+                        "message": "This Pinterest video appears to be streaming-only (HLS) and does not provide a direct MP4 download link.",
+                        "title": title,
+                        "thumbnail": thumbnail,
+                        "stream_url": hls_url,
+                    },
+                )
             return _json_response(
                 self,
                 422,

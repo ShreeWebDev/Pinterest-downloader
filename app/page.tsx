@@ -5,7 +5,8 @@ import { useMemo, useState } from "react";
 type ExtractResult = {
   title: string;
   thumbnail?: string | null;
-  video_url: string;
+  video_url?: string;
+  stream_url?: string;
 };
 
 export default function Home() {
@@ -41,6 +42,16 @@ export default function Home() {
           const maybeMessage = (data as { message?: unknown }).message;
           if (typeof maybeMessage === "string" && maybeMessage.trim()) {
             setError(maybeMessage);
+            const streamUrl = (data as { stream_url?: unknown }).stream_url;
+            const title = (data as { title?: unknown }).title;
+            const thumbnail = (data as { thumbnail?: unknown }).thumbnail;
+            if (typeof streamUrl === "string" && streamUrl.trim()) {
+              setResult({
+                title: typeof title === "string" && title.trim() ? title : "Pinterest Video",
+                thumbnail: typeof thumbnail === "string" ? thumbnail : null,
+                stream_url: streamUrl,
+              });
+            }
             return;
           }
         }
@@ -149,14 +160,25 @@ export default function Home() {
                     {result.title}
                   </h2>
                   <div className="flex flex-col gap-3 sm:flex-row">
-                    <a
-                      href={result.video_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex h-12 items-center justify-center rounded-2xl bg-red-600 px-5 font-semibold text-white transition-colors hover:bg-red-700"
-                    >
-                      Direct MP4 Download
-                    </a>
+                    {result.video_url ? (
+                      <a
+                        href={result.video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex h-12 items-center justify-center rounded-2xl bg-red-600 px-5 font-semibold text-white transition-colors hover:bg-red-700"
+                      >
+                        Direct MP4 Download
+                      </a>
+                    ) : result.stream_url ? (
+                      <a
+                        href={result.stream_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex h-12 items-center justify-center rounded-2xl bg-red-600 px-5 font-semibold text-white transition-colors hover:bg-red-700"
+                      >
+                        Open HLS Stream
+                      </a>
+                    ) : null}
                     <a
                       href={url.trim()}
                       target="_blank"
@@ -167,8 +189,11 @@ export default function Home() {
                     </a>
                   </div>
                   <p className="text-sm text-zinc-500">
-                    If the download doesn’t start automatically, open the direct
-                    link and save the video from your browser.
+                    {result.video_url
+                      ? "If the download doesn’t start automatically, open the direct link and save the video from your browser."
+                      : result.stream_url
+                        ? "This is an HLS stream (.m3u8). It may not download directly in a browser. You can open it in a player like VLC or use a downloader that supports HLS."
+                        : ""}
                   </p>
                 </div>
               </div>
