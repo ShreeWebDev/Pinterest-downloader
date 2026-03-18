@@ -1,7 +1,7 @@
 import re
 from http.server import BaseHTTPRequestHandler
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, urljoin, urlparse
+from urllib.parse import parse_qs, quote, urljoin, urlparse
 from urllib.request import Request, urlopen
 
 
@@ -20,6 +20,22 @@ def _safe_filename(value: str) -> str:
     value = re.sub(r"\s+", " ", value).strip()
     value = value[:80].strip()
     return value or "pinterest-video"
+
+
+def _safe_ascii_filename(value: str) -> str:
+    value = _safe_filename(value)
+    value = value.encode("ascii", errors="ignore").decode("ascii")
+    value = re.sub(r"[^A-Za-z0-9\s\-\(\)\[\]\.]", "", value)
+    value = re.sub(r"\s+", " ", value).strip()
+    value = value[:80].strip()
+    return value or "pinterest-video"
+
+
+def _content_disposition(filename: str, filename_utf8: str) -> str:
+    safe_ascii = _safe_ascii_filename(filename)
+    safe_utf8 = _safe_filename(filename_utf8)
+    encoded = quote(safe_utf8 + ".ts", safe="")
+    return f'attachment; filename="{safe_ascii}.ts"; filename*=UTF-8\'\'{encoded}'
 
 
 def _is_allowed_m3u8(url: str) -> bool:
@@ -60,7 +76,40 @@ def _iter_segments(m3u8_url: str, playlist: str):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
+        if line.lower().endswith(".m3u8"):
+            continue
         yield urljoin(m3u8_url, line)
+
+
+def _pick_variant_playlist(master_url: str, playlist: str) -> str:
+    lines = [l.strip() for l in playlist.splitlines()]
+    variants = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if line.startswith("#EXT-X-STREAM-INF"):
+            attrs = line.split(":", 1)[1] if ":" in line else ""
+            bandwidth = 0
+            for part in attrs.split(","):
+                part = part.strip()
+                if part.upper().startswith("BANDWIDTH="):
+                    try:
+                        bandwidth = int(part.split("=", 1)[1].strip())
+                    except Exception:
+                        bandwidth = 0
+                    break
+            j = i + 1
+            while j < len(lines) and (not lines[j] or lines[j].startswith("#")):
+                j += 1
+            if j < len(lines):
+                uri = lines[j]
+                variants.append((bandwidth, urljoin(master_url, uri)))
+                i = j
+        i += 1
+    if not variants:
+        return ""
+    variants.sort(key=lambda x: x[0], reverse=True)
+    return variants[0][1]
 
 
 class handler(BaseHTTPRequestHandler):
@@ -106,6 +155,41 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(b"Unexpected server error")
             return
 
+        if "#EXT-X-KEY" in playlist:
+            self.send_response(422)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"Encrypted HLS is not supported")
+            return
+
+        for _ in range(3):
+            if "#EXT-X-STREAM-INF" not in playlist:
+                break
+            next_url = _pick_variant_playlist(m3u8_url, playlist)
+            if not next_url:
+                break
+            m3u8_url = next_url
+            try:
+                playlist = _fetch_text(m3u8_url)
+            except (HTTPError, URLError):
+                self.send_response(502)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(b"Failed to fetch variant playlist")
+                return
+            except Exception:
+                self.send_response(500)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(b"Unexpected server error")
+                return
+            if "#EXT-X-KEY" in playlist:
+                self.send_response(422)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(b"Encrypted HLS is not supported")
+                return
+
         segments = list(_iter_segments(m3u8_url, playlist))
         if not segments:
             self.send_response(422)
@@ -121,11 +205,11 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(b"Too many segments")
             return
 
-        filename = _safe_filename(title) + ".ts"
+        disposition = _content_disposition(title, title)
 
         self.send_response(200)
         self.send_header("Content-Type", "video/mp2t")
-        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.send_header("Content-Disposition", disposition)
         self.send_header("Cache-Control", "no-store")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
@@ -144,4 +228,3 @@ class handler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
         return
-
