@@ -1,9 +1,20 @@
 import json
+import re
 from http.server import BaseHTTPRequestHandler
+from html import unescape
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
+
+
+_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/122.0.0.0 Safari/537.36"
+)
 
 
 def _json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict):
@@ -82,6 +93,82 @@ def _pick_best_mp4_url(info: dict) -> str:
     return ""
 
 
+def _fetch_html(url: str) -> str:
+    req = Request(
+        url,
+        headers={
+            "User-Agent": _USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+        },
+        method="GET",
+    )
+    with urlopen(req, timeout=20) as resp:
+        raw = resp.read()
+        try:
+            return raw.decode("utf-8")
+        except UnicodeDecodeError:
+            return raw.decode("utf-8", errors="ignore")
+
+
+def _extract_meta(html: str, key: str) -> str:
+    patterns = [
+        rf'<meta[^>]+property=["\']{re.escape(key)}["\'][^>]+content=["\']([^"\']+)["\']',
+        rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']{re.escape(key)}["\']',
+        rf'<meta[^>]+name=["\']{re.escape(key)}["\'][^>]+content=["\']([^"\']+)["\']',
+        rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']{re.escape(key)}["\']',
+    ]
+    for pat in patterns:
+        m = re.search(pat, html, flags=re.IGNORECASE)
+        if m:
+            return unescape(m.group(1)).strip()
+    return ""
+
+
+def _score_mp4_url(u: str) -> tuple:
+    m = re.search(r"(\d{3,4})p", u)
+    p = int(m.group(1)) if m else 0
+    return (p, len(u))
+
+
+def _extract_from_html(url: str) -> dict:
+    html = _fetch_html(url)
+
+    title = _extract_meta(html, "og:title") or _extract_meta(html, "twitter:title")
+    thumbnail = _extract_meta(html, "og:image") or _extract_meta(html, "twitter:image")
+    og_video = _extract_meta(html, "og:video") or _extract_meta(html, "og:video:secure_url")
+
+    candidates = []
+    if og_video and ".mp4" in og_video:
+        candidates.append(og_video)
+
+    for m in re.finditer(r"https:\\/\\/[^\"'\\s<>]+?\\.mp4[^\"'\\s<>]*", html, flags=re.IGNORECASE):
+        candidates.append(m.group(0))
+    for m in re.finditer(r"https://[^\"'\\s<>]+?\\.mp4[^\"'\\s<>]*", html, flags=re.IGNORECASE):
+        candidates.append(m.group(0))
+
+    normalized = []
+    for u in candidates:
+        u = unescape(u)
+        u = u.replace("\\/", "/")
+        u = u.strip()
+        if u.startswith("https://"):
+            normalized.append(u)
+
+    normalized = list(dict.fromkeys(normalized))
+    normalized.sort(key=_score_mp4_url, reverse=True)
+
+    video_url = normalized[0] if normalized else ""
+    if not video_url:
+        return {}
+
+    return {
+        "title": title or "Pinterest Video",
+        "thumbnail": thumbnail or None,
+        "video_url": video_url,
+    }
+
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(204)
@@ -115,12 +202,20 @@ class handler(BaseHTTPRequestHandler):
             with YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
         except DownloadError:
+            try:
+                fallback = _extract_from_html(url)
+                if fallback.get("video_url"):
+                    return _json_response(self, 200, fallback)
+            except (HTTPError, URLError):
+                pass
+            except Exception:
+                pass
             return _json_response(
                 self,
                 422,
                 {
                     "error": "EXTRACTION_FAILED",
-                    "message": "Failed to extract a video from that Pinterest URL.",
+                    "message": "Failed to extract a video from that Pinterest URL. Try another pin link or a share link from the Pinterest app.",
                 },
             )
         except Exception:
