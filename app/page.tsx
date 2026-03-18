@@ -133,7 +133,7 @@ export default function Home() {
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(900px_circle_at_20%_0%,rgba(230,0,35,0.10),transparent_60%),radial-gradient(900px_circle_at_80%_20%,rgba(230,0,35,0.08),transparent_55%)]" />
           <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-2 lg:items-center">
             <div className="flex flex-col gap-5">
-              <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
+              <h1 className="text-4xl font-semibold tracking-tight text-[#E60023] sm:text-5xl">
                 Pinterest Video Downloader
               </h1>
               <p className="text-lg leading-relaxed text-zinc-600">
@@ -236,7 +236,7 @@ export default function Home() {
                   />
                 </svg>
               </span>
-              <h2 className="text-2xl font-semibold tracking-tight">
+              <h2 className="text-2xl font-semibold tracking-tight text-[#E60023]">
                 How to Download
               </h2>
             </div>
@@ -293,7 +293,7 @@ export default function Home() {
                     />
                   </svg>
                 </span>
-                <h2 className="text-2xl font-semibold tracking-tight">
+                <h2 className="text-2xl font-semibold tracking-tight text-[#E60023]">
                   Features
                 </h2>
               </div>
@@ -348,7 +348,7 @@ export default function Home() {
         <section className="bg-[#FFF5F5] py-12 sm:py-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="rounded-3xl bg-white/70 p-6 sm:p-10">
-              <h2 className="text-2xl font-semibold tracking-tight">
+              <h2 className="text-2xl font-semibold tracking-tight text-[#E60023]">
                 What&apos;s New
               </h2>
               <div className="mt-8 grid gap-4 lg:grid-cols-3">
@@ -402,7 +402,9 @@ export default function Home() {
                     />
                   </svg>
                 </span>
-                <h2 className="text-2xl font-semibold tracking-tight">FAQ</h2>
+                <h2 className="text-2xl font-semibold tracking-tight text-[#E60023]">
+                  FAQ
+                </h2>
               </div>
 
               <dl className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -452,7 +454,9 @@ export default function Home() {
         <section id="blog" className="pb-12 sm:pb-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <h2 className="text-2xl font-semibold tracking-tight">Blog</h2>
+              <h2 className="text-2xl font-semibold tracking-tight text-[#E60023]">
+                Blog
+              </h2>
               <p className="mt-3 text-sm leading-relaxed text-zinc-600">
                 Coming soon. Tips, troubleshooting, and updates for the Pinterest
                 Downloader.
@@ -472,12 +476,12 @@ export default function Home() {
               </div>
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-zinc-300">
-              <a href="#" className="hover:text-white">
+              <Link href="/privacy-policy" className="hover:text-white">
                 Privacy Policy
-              </a>
-              <a href="#" className="hover:text-white">
-                Terms
-              </a>
+              </Link>
+              <Link href="/terms-of-service" className="hover:text-white">
+                Terms of Service
+              </Link>
               <a href="#faq" className="hover:text-white">
                 Disclaimer
               </a>

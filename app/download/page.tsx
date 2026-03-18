@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type ExtractResult = {
   title: string;
@@ -14,6 +14,82 @@ type ExtractResult = {
 type StoredData = ExtractResult & {
   source_url?: string;
 };
+
+function normalizeM3u8Url(baseUrl: string, maybeRelativeUrl: string) {
+  try {
+    return new URL(maybeRelativeUrl, baseUrl).toString();
+  } catch {
+    return maybeRelativeUrl;
+  }
+}
+
+function pickBestVariantUrlFromMaster(masterText: string, masterUrl: string) {
+  const lines = masterText.split(/\r?\n/);
+  let best: { bandwidth: number; url: string } | null = null;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]?.trim() ?? "";
+    if (!line.startsWith("#EXT-X-STREAM-INF:")) continue;
+
+    const attrs = line.slice("#EXT-X-STREAM-INF:".length);
+    const m = attrs.match(/BANDWIDTH=(\d+)/i);
+    const bandwidth = m ? Number(m[1]) : 0;
+
+    let j = i + 1;
+    while (j < lines.length) {
+      const nextLine = lines[j]?.trim() ?? "";
+      if (nextLine && !nextLine.startsWith("#")) {
+        const url = normalizeM3u8Url(masterUrl, nextLine);
+        if (!best || bandwidth > best.bandwidth) best = { bandwidth, url };
+        break;
+      }
+      j += 1;
+    }
+  }
+
+  return best?.url ?? masterUrl;
+}
+
+function absolutizePlaylistText(playlistText: string, playlistUrl: string) {
+  const lines = playlistText.split(/\r?\n/);
+  const out: string[] = [];
+
+  for (const raw of lines) {
+    const line = raw ?? "";
+    const trimmed = line.trim();
+    if (!trimmed) {
+      out.push(line);
+      continue;
+    }
+
+    if (trimmed.startsWith("#EXT-X-KEY:") || trimmed.startsWith("#EXT-X-MAP:")) {
+      const updated = line.replace(/URI="([^"]+)"/g, (_, uri: string) => {
+        const absolute = normalizeM3u8Url(playlistUrl, uri);
+        return `URI="${absolute}"`;
+      });
+      out.push(updated);
+      continue;
+    }
+
+    if (trimmed.startsWith("#")) {
+      out.push(line);
+      continue;
+    }
+
+    out.push(normalizeM3u8Url(playlistUrl, trimmed));
+  }
+
+  return out.join("\n");
+}
+
+function safeFileStem(title: string) {
+  const cleaned = (title || "pinterest-video")
+    .replace(/[\/\\?%*:|"<>]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+  return cleaned || "pinterest-video";
+}
 
 export default function DownloadPage() {
   const router = useRouter();
@@ -36,14 +112,82 @@ export default function DownloadPage() {
     }
   });
   const [copied, setCopied] = useState<string | null>(null);
+  const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
+  const [converting, setConverting] = useState(false);
+  const [conversionProgress, setConversionProgress] = useState<number>(0);
+  const [finalMp4Url, setFinalMp4Url] = useState<string | null>(null);
+  const [conversionError, setConversionError] = useState<string | null>(null);
+  const ffmpegRef = useRef<unknown>(null);
 
   const canRender = useMemo(() => Boolean(data && data.title), [data]);
+  const isHls = useMemo(() => Boolean(data?.stream_url), [data?.stream_url]);
 
   useEffect(() => {
     if (data) return;
     sessionStorage.removeItem("pinterest_video_data");
     router.replace("/");
   }, [router, data]);
+
+  useEffect(() => {
+    if (!isHls) return;
+
+    let cancelled = false;
+
+    async function loadFFmpeg() {
+      try {
+        const [{ FFmpeg }, { toBlobURL }] = await Promise.all([
+          import("@ffmpeg/ffmpeg"),
+          import("@ffmpeg/util"),
+        ]);
+
+        if (cancelled) return;
+        if (ffmpegRef.current) {
+          setFfmpegLoaded(true);
+          return;
+        }
+
+        const baseURL =
+          "https://unpkg.com/@ffmpeg/core-mt@0.12.2/dist/esm";
+
+        const ffmpeg = new FFmpeg();
+        ffmpeg.on("progress", ({ progress }: { progress?: number }) => {
+          const p = typeof progress === "number" ? progress : 0;
+          if (cancelled) return;
+          setConversionProgress(Math.max(0, Math.min(100, Math.round(p * 100))));
+        });
+
+        const [coreURL, wasmURL, workerURL] = await Promise.all([
+          toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+          toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+          toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, "text/javascript"),
+        ]);
+
+        await ffmpeg.load({ coreURL, wasmURL, workerURL });
+
+        if (cancelled) return;
+        ffmpegRef.current = ffmpeg;
+        setFfmpegLoaded(true);
+      } catch {
+        if (cancelled) return;
+        setConversionError(
+          "Converter load failed. Your browser may block SharedArrayBuffer or cross-origin resources."
+        );
+      }
+    }
+
+    void loadFFmpeg();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isHls]);
+
+  useEffect(() => {
+    if (!finalMp4Url) return;
+    return () => {
+      URL.revokeObjectURL(finalMp4Url);
+    };
+  }, [finalMp4Url]);
 
   async function copyText(text: string, label: string) {
     try {
@@ -59,6 +203,70 @@ export default function DownloadPage() {
   function downloadAnother() {
     sessionStorage.removeItem("pinterest_video_data");
     router.push("/");
+  }
+
+  async function handleHlsToMp4Conversion() {
+    if (!data?.stream_url) return;
+    if (!ffmpegRef.current) return;
+    if (converting) return;
+
+    setConversionError(null);
+    setFinalMp4Url(null);
+    setConversionProgress(0);
+    setConverting(true);
+
+    try {
+      const ffmpeg = ffmpegRef.current as {
+        writeFile: (path: string, data: Uint8Array) => Promise<void>;
+        exec: (args: string[]) => Promise<void>;
+        readFile: (path: string) => Promise<Uint8Array>;
+      };
+
+      const masterUrl = data.stream_url;
+      const masterRes = await fetch(masterUrl, { cache: "no-store" });
+      if (!masterRes.ok) {
+        throw new Error("Failed to fetch master playlist.");
+      }
+      const masterText = await masterRes.text();
+      const bestVariantUrl = pickBestVariantUrlFromMaster(masterText, masterUrl);
+
+      const streamRes = await fetch(bestVariantUrl, { cache: "no-store" });
+      if (!streamRes.ok) {
+        throw new Error("Failed to fetch stream playlist.");
+      }
+      const streamText = await streamRes.text();
+      const localPlaylist = absolutizePlaylistText(streamText, bestVariantUrl);
+
+      const enc = new TextEncoder();
+      await ffmpeg.writeFile("playlist.m3u8", enc.encode(localPlaylist));
+
+      await ffmpeg.exec([
+        "-protocol_whitelist",
+        "file,http,https,tcp,tls,crypto",
+        "-i",
+        "playlist.m3u8",
+        "-c",
+        "copy",
+        "-bsf:a",
+        "aac_adtstoasc",
+        "output.mp4",
+      ]);
+
+      const output = await ffmpeg.readFile("output.mp4");
+      const copy = new Uint8Array(output.length);
+      copy.set(output);
+      const blob = new Blob([copy.buffer], { type: "video/mp4" });
+      const url = URL.createObjectURL(blob);
+      setFinalMp4Url(url);
+    } catch (e) {
+      const msg =
+        e instanceof Error && e.message
+          ? e.message
+          : "Conversion failed. Try the server-side HLS download or FFmpeg on desktop.";
+      setConversionError(msg);
+    } finally {
+      setConverting(false);
+    }
   }
 
   return (
@@ -163,6 +371,57 @@ export default function DownloadPage() {
 
                 {data.stream_url ? (
                   <>
+                    {finalMp4Url ? (
+                      <a
+                        href={finalMp4Url}
+                        download={`${safeFileStem(data.title)}.mp4`}
+                        className="inline-flex h-12 items-center justify-center rounded-2xl bg-gradient-to-r from-[#E60023] to-rose-500 px-5 font-semibold text-white transition-opacity hover:opacity-95 sm:col-span-2"
+                      >
+                        Download Converted MP4
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void handleHlsToMp4Conversion()}
+                        disabled={!ffmpegLoaded || converting}
+                        className="inline-flex h-12 items-center justify-center rounded-2xl bg-gradient-to-r from-[#E60023] to-rose-500 px-5 font-semibold text-white transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-50 sm:col-span-2"
+                      >
+                        Convert &amp; Download MP4 (Beta)
+                      </button>
+                    )}
+
+                    {!ffmpegLoaded && !conversionError ? (
+                      <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700 sm:col-span-2">
+                        Loading converter...
+                      </div>
+                    ) : null}
+
+                    {converting ? (
+                      <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 sm:col-span-2">
+                        <div className="flex items-center justify-between text-sm text-zinc-700">
+                          <span>Converting...</span>
+                          <span>{conversionProgress}%</span>
+                        </div>
+                        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+                          <div
+                            className="h-full rounded-full bg-[#E60023] transition-[width]"
+                            style={{ width: `${conversionProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {conversionError ? (
+                      <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 sm:col-span-2">
+                        {conversionError}
+                      </div>
+                    ) : null}
+
+                    <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700 sm:col-span-2">
+                      Desktop वर हे best चालतं. Conversion data-heavy आणि
+                      mobile वर slow होऊ शकतं.
+                    </div>
+
                     <button
                       type="button"
                       onClick={() =>
@@ -228,12 +487,12 @@ export default function DownloadPage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-4 text-sm text-zinc-300">
-              <a href="#" className="hover:text-white">
+              <Link href="/privacy-policy" className="hover:text-white">
                 Privacy Policy
-              </a>
-              <a href="#" className="hover:text-white">
-                Terms
-              </a>
+              </Link>
+              <Link href="/terms-of-service" className="hover:text-white">
+                Terms of Service
+              </Link>
               <Link href="/" className="hover:text-white">
                 Home
               </Link>
