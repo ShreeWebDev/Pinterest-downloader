@@ -105,7 +105,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 font-sans text-zinc-950">
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 font-sans text-zinc-950">
       <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/90 backdrop-blur">
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <Link
@@ -115,13 +115,13 @@ export default function Home() {
             Pinterest Downloader
           </Link>
           <div className="hidden items-center gap-6 text-sm text-zinc-600 sm:flex">
-            <a href="#how-to" className="hover:text-zinc-900">
+            <a href="#how-to" className="hover:text-[#E60023]">
               How to
             </a>
-            <a href="#faq" className="hover:text-zinc-900">
+            <a href="#faq" className="hover:text-[#E60023]">
               FAQ
             </a>
-            <a href="#blog" className="hover:text-zinc-900">
+            <a href="#blog" className="hover:text-[#E60023]">
               Blog
             </a>
           </div>
@@ -153,7 +153,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-7">
+            <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-lg shadow-red-100 sm:p-7">
               <form
                 className="flex flex-col gap-4"
                 onSubmit={(e) => {
@@ -178,7 +178,7 @@ export default function Home() {
                   <button
                     type="submit"
                     disabled={!isValidInput || loading}
-                    className="inline-flex h-14 shrink-0 items-center justify-center gap-3 rounded-2xl bg-[#E60023] px-7 font-semibold text-white shadow-sm transition-colors hover:bg-[#c7001f] disabled:cursor-not-allowed disabled:bg-zinc-300"
+                    className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[#E60023] px-7 font-semibold text-white shadow-sm transition-colors hover:bg-[#d0001f] disabled:cursor-not-allowed disabled:bg-zinc-300 sm:w-auto"
                   >
                     {loading ? (
                       <>
@@ -201,7 +201,10 @@ export default function Home() {
           </div>
         </section>
 
-        <section aria-label="Advertisement" className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
+        <section
+          aria-label="Advertisement"
+          className="mx-auto max-w-6xl px-4 pb-10 sm:px-6"
+        >
           <div className="flex h-24 items-center justify-center rounded-3xl border border-zinc-200 bg-zinc-100 text-sm font-medium text-zinc-600">
             Advertisement Placeholder
           </div>
@@ -266,78 +269,107 @@ export default function Home() {
 
         <section className="py-12 sm:py-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <h2 className="text-2xl font-semibold tracking-tight">
-              Features
-            </h2>
-            <div className="mt-8 grid gap-6 lg:grid-cols-3">
-              <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold">
-                  Supported Video Quality &amp; Formats
-                </h3>
-                <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-                  We attempt to extract the highest quality MP4 available. If a
-                  pin is streaming-only, we provide an HLS download option.
-                </p>
-                <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-zinc-600">
-                  <li>Best MP4 (when available)</li>
-                  <li>HLS (.m3u8) download as .ts</li>
-                  <li>Works with pin and share links</li>
-                </ul>
+            <div className="rounded-3xl bg-gray-100 p-6 sm:p-10">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[#E60023] shadow-sm">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M12 6V18"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M6 12H18"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+                <h2 className="text-2xl font-semibold tracking-tight">
+                  Features
+                </h2>
               </div>
 
-              <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold">Is it Safe to Use?</h3>
-                <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-                  Yes. No account required. Paste a link and download. Always
-                  respect copyright and only download content you have rights to
-                  use.
-                </p>
-                <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-zinc-600">
-                  <li>No login required</li>
-                  <li>No tracking scripts added here</li>
-                  <li>Runs on modern browsers</li>
-                </ul>
-              </div>
+              <div className="mt-8 grid gap-6 lg:grid-cols-3">
+                <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold">
+                    Supported Video Quality &amp; Formats
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-zinc-600">
+                    We attempt to extract the highest quality MP4 available. If a
+                    pin is streaming-only, we provide an HLS download option.
+                  </p>
+                  <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-zinc-600">
+                    <li>Best MP4 (when available)</li>
+                    <li>HLS (.m3u8) download as .ts</li>
+                    <li>Works with pin and share links</li>
+                  </ul>
+                </div>
 
-              <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold">Fast &amp; Simple</h3>
-                <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-                  Clean UI, one-click download flow, and clear fallbacks when a
-                  pin doesn’t provide a direct MP4 link.
-                </p>
-                <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-zinc-600">
-                  <li>Mobile-first design</li>
-                  <li>Clear error messages</li>
-                  <li>Copy commands for power users</li>
-                </ul>
+                <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold">Is it Safe to Use?</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-zinc-600">
+                    Yes. No account required. Paste a link and download. Always
+                    respect copyright and only download content you have rights to
+                    use.
+                  </p>
+                  <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-zinc-600">
+                    <li>No login required</li>
+                    <li>No tracking scripts added here</li>
+                    <li>Runs on modern browsers</li>
+                  </ul>
+                </div>
+
+                <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold">Fast &amp; Simple</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-zinc-600">
+                    Clean UI, one-click download flow, and clear fallbacks when a
+                    pin doesn’t provide a direct MP4 link.
+                  </p>
+                  <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-zinc-600">
+                    <li>Mobile-first design</li>
+                    <li>Clear error messages</li>
+                    <li>Copy commands for power users</li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="bg-zinc-50 py-12 sm:py-16">
+        <section className="bg-[#FFF5F5] py-12 sm:py-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <h2 className="text-2xl font-semibold tracking-tight">
-              What&apos;s New
-            </h2>
-            <div className="mt-8 grid gap-4 lg:grid-cols-3">
-              <div className="rounded-3xl border border-blue-200 bg-blue-50 p-6 text-blue-900">
+            <div className="rounded-3xl bg-white/70 p-6 sm:p-10">
+              <h2 className="text-2xl font-semibold tracking-tight">
+                What&apos;s New
+              </h2>
+              <div className="mt-8 grid gap-4 lg:grid-cols-3">
+                <div className="rounded-3xl bg-blue-100 p-6 text-blue-900 shadow-sm">
                 <h3 className="text-base font-semibold">Update</h3>
                 <p className="mt-2 text-sm leading-relaxed">
                   Improved error handling and clearer messages for failed pins.
                 </p>
               </div>
-              <div className="rounded-3xl border border-green-200 bg-green-50 p-6 text-green-900">
+                <div className="rounded-3xl bg-green-100 p-6 text-green-900 shadow-sm">
                 <h3 className="text-base font-semibold">Fix</h3>
                 <p className="mt-2 text-sm leading-relaxed">
                   Fixed GIF downloading issues and improved extraction fallback.
                 </p>
               </div>
-              <div className="rounded-3xl border border-orange-200 bg-orange-50 p-6 text-orange-900">
+                <div className="rounded-3xl bg-orange-100 p-6 text-orange-900 shadow-sm">
                 <h3 className="text-base font-semibold">New</h3>
                 <p className="mt-2 text-sm leading-relaxed">
                   Added in-app HLS download when direct MP4 isn&apos;t available.
                 </p>
+              </div>
               </div>
             </div>
           </div>
@@ -345,47 +377,75 @@ export default function Home() {
 
         <section id="faq" className="py-12 sm:py-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <h2 className="text-2xl font-semibold tracking-tight">FAQ</h2>
-            <dl className="mt-8 grid gap-6 lg:grid-cols-2">
-              <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                <dt className="text-base font-semibold">Where are files saved?</dt>
-                <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
-                  Downloads are saved to your browser’s default Downloads folder
-                  unless you changed it.
-                </dd>
+            <div className="rounded-3xl bg-[#FFF5F5] p-6 sm:p-10">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white text-[#E60023] shadow-sm">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M12 18H12.01"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M10 9C10 7.89543 10.8954 7 12 7C13.1046 7 14 7.89543 14 9C14 10.5 12 11 12 12.5V14"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <h2 className="text-2xl font-semibold tracking-tight">FAQ</h2>
               </div>
-              <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                <dt className="text-base font-semibold">Can I download GIFs?</dt>
-                <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
-                  If Pinterest provides a downloadable asset, we’ll attempt to
-                  extract it. Some pins may only be streaming-only.
-                </dd>
-              </div>
-              <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                <dt className="text-base font-semibold">
-                  Why do I see HLS instead of MP4?
-                </dt>
-                <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
-                  Some videos are delivered as HLS streams (.m3u8). In that case
-                  we provide an HLS download option.
-                </dd>
-              </div>
-              <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                <dt className="text-base font-semibold">
-                  Does it work on mobile?
-                </dt>
-                <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
-                  Yes. Use a share link from the Pinterest app for best results.
-                </dd>
-              </div>
-              <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                <dt className="text-base font-semibold">Is this affiliated with Pinterest?</dt>
-                <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
-                  No. This is an independent tool and not affiliated with
-                  Pinterest.
-                </dd>
-              </div>
-            </dl>
+
+              <dl className="mt-8 grid gap-6 lg:grid-cols-2">
+                <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm transition-colors hover:border-[#E60023]/40">
+                  <dt className="text-lg font-semibold">Where are files saved?</dt>
+                  <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
+                    Downloads are saved to your browser’s default Downloads folder
+                    unless you changed it.
+                  </dd>
+                </div>
+                <div className="rounded-3xl border border-zinc-200 bg-gray-50 p-6 shadow-sm transition-colors hover:border-[#E60023]/40">
+                  <dt className="text-lg font-semibold">Can I download GIFs?</dt>
+                  <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
+                    If Pinterest provides a downloadable asset, we’ll attempt to
+                    extract it. Some pins may only be streaming-only.
+                  </dd>
+                </div>
+                <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm transition-colors hover:border-[#E60023]/40">
+                  <dt className="text-lg font-semibold">
+                    Why do I see HLS instead of MP4?
+                  </dt>
+                  <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
+                    Some videos are delivered as HLS streams (.m3u8). In that case
+                    we provide an HLS download option.
+                  </dd>
+                </div>
+                <div className="rounded-3xl border border-zinc-200 bg-gray-50 p-6 shadow-sm transition-colors hover:border-[#E60023]/40">
+                  <dt className="text-lg font-semibold">Does it work on mobile?</dt>
+                  <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
+                    Yes. Use a share link from the Pinterest app for best results.
+                  </dd>
+                </div>
+                <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm transition-colors hover:border-[#E60023]/40 lg:col-span-2">
+                  <dt className="text-lg font-semibold">
+                    Is this affiliated with Pinterest?
+                  </dt>
+                  <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
+                    No. This is an independent tool and not affiliated with
+                    Pinterest.
+                  </dd>
+                </div>
+              </dl>
+            </div>
           </div>
         </section>
 
@@ -402,7 +462,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-zinc-800 bg-zinc-950 text-zinc-200">
+      <footer className="border-t border-zinc-700 bg-gradient-to-b from-gray-800 to-gray-900 text-zinc-100">
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex flex-col gap-2">
@@ -423,7 +483,7 @@ export default function Home() {
               </a>
             </div>
           </div>
-          <p className="mt-6 text-sm leading-relaxed text-zinc-400">
+          <p className="mt-6 text-sm leading-relaxed text-zinc-200/80">
             This site is not affiliated with Pinterest. Use it only to download
             content you have rights to use.
           </p>
