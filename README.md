@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pinterest Video Downloader (Next.js + Vercel Python Function)
 
-## Getting Started
+Frontend is built with Next.js App Router. The backend extractor is a raw Vercel Python Function powered by `yt-dlp`.
 
-First, run the development server:
+## API
+
+- Endpoint: `POST /api/download`
+- Body: `{ "url": "https://www.pinterest.com/pin/..." }`
+- Response: `{ "title": "...", "thumbnail": "...", "video_url": "https://..." }`
+
+The Python function lives at `api/download.py` and returns clean JSON errors for invalid inputs and extraction failures.
+
+## Local Development
+
+Run the Next.js frontend:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Note: `npm run dev` will not run `api/download.py` (Python) locally, so `/api/download` will 404.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+To test the full stack locally (Next.js + Python Function), use Vercel CLI:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npx vercel dev
+```
 
-## Learn More
+The production deployment on Vercel will automatically serve `api/download.py` at `/api/download`.
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy to Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Push this repo to GitHub (or import directly).
+- Create a new Vercel project and deploy.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Python dependencies are declared in `requirements.txt`. Vercel routing configuration is in `vercel.json`.
