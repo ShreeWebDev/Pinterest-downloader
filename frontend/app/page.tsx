@@ -4,104 +4,24 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-type ExtractResult = {
-  title: string;
-  thumbnail?: string | null;
-  video_url?: string;
-  stream_url?: string;
-};
-
 export default function Home() {
   const [url, setUrl] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<ExtractResult | null>(null);
   const router = useRouter();
-  void result;
 
   const isValidInput = useMemo(() => url.trim().length > 0, [url]);
 
-  async function handleDownload() {
+  function handleDownload() {
     const trimmed = url.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      setError("Please paste a Pinterest link.");
+      return;
+    }
 
     setLoading(true);
     setError(null);
-    setResult(null);
-
-    try {
-      const res = await fetch("/api/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: trimmed }),
-      });
-
-      const contentType = res.headers.get("content-type") || "";
-      const isJson = contentType.toLowerCase().includes("application/json");
-      const rawBody = await res.text();
-      const data = isJson ? (JSON.parse(rawBody) as unknown) : rawBody;
-
-      if (!res.ok) {
-        if (typeof data === "object" && data !== null) {
-          const maybeMessage = (data as { message?: unknown }).message;
-          if (typeof maybeMessage === "string" && maybeMessage.trim()) {
-            const streamUrl = (data as { stream_url?: unknown }).stream_url;
-            const title = (data as { title?: unknown }).title;
-            const thumbnail = (data as { thumbnail?: unknown }).thumbnail;
-            if (typeof streamUrl === "string" && streamUrl.trim()) {
-              const extracted = {
-                title: typeof title === "string" && title.trim() ? title : "Pinterest Video",
-                thumbnail: typeof thumbnail === "string" ? thumbnail : null,
-                stream_url: streamUrl,
-              } satisfies ExtractResult;
-              setResult(extracted);
-              sessionStorage.setItem(
-                "pinterest_video_data",
-                JSON.stringify({ ...extracted, source_url: trimmed })
-              );
-              router.push("/download");
-              return;
-            }
-            setError(maybeMessage);
-            return;
-          }
-        }
-
-        if (!isJson && res.status === 404) {
-          setError(
-            "Local dev मध्ये /api/download चालत नाही. Vercel Python Function test करण्यासाठी 'vercel dev' वापरा, नंतर पुन्हा try करा."
-          );
-          return;
-        }
-
-        setError("Request failed. Please try a different Pinterest link.");
-        return;
-      }
-
-      if (
-        typeof data !== "object" ||
-        data === null ||
-        !("video_url" in data) ||
-        typeof (data as { video_url: unknown }).video_url !== "string"
-      ) {
-        setError("Unexpected response from the server.");
-        return;
-      }
-
-      const extracted = data as ExtractResult;
-      setResult(extracted);
-      sessionStorage.setItem(
-        "pinterest_video_data",
-        JSON.stringify({ ...extracted, source_url: trimmed })
-      );
-      router.push("/download");
-    } catch {
-      setError(
-        "Response parse error. Local dev मध्ये Python API serve होत नाही. 'vercel dev' वापरून try करा."
-      );
-    } finally {
-      setLoading(false);
-    }
+    router.push(`/download?url=${encodeURIComponent(trimmed)}`);
   }
 
   return (
@@ -158,7 +78,7 @@ export default function Home() {
                 className="flex flex-col gap-4"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  void handleDownload();
+                  handleDownload();
                 }}
               >
                 <label className="text-sm font-medium text-zinc-900">
