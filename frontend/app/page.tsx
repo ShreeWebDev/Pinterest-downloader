@@ -96,7 +96,8 @@ export default function Home() {
                     spellCheck={false}
                   />
                   <button
-                    type="submit"
+                    type="button"
+                    onClick={handleDownload}
                     disabled={!isValidInput || loading}
                     className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[#E60023] px-7 font-semibold text-white shadow-sm transition-colors hover:bg-[#d0001f] disabled:cursor-not-allowed disabled:bg-zinc-300 sm:w-auto"
                   >

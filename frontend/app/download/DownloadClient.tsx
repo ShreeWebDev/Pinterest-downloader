@@ -57,7 +57,8 @@ export default function DownloadClient({
     router.push("/");
   }
 
-  async function handleDownload() {
+  async function handleDownload(e?: React.MouseEvent<HTMLButtonElement>) {
+    e?.preventDefault();
     const sourceUrl = (data?.source_url || "").trim();
     if (!sourceUrl) {
       setCopied("Missing source URL");
