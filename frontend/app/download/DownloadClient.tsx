@@ -35,6 +35,8 @@ export default function DownloadClient({
 }) {
   const router = useRouter();
   const [copied, setCopied] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
 
   const canRender = useMemo(() => Boolean(data && data.title), [data]);
 
@@ -51,6 +53,72 @@ export default function DownloadClient({
 
   function downloadAnother() {
     router.push("/");
+  }
+
+  async function handleDownload() {
+    if (!API_BASE) {
+      setCopied("Missing NEXT_PUBLIC_API_URL");
+      window.setTimeout(() => setCopied(null), 1500);
+      return;
+    }
+    const sourceUrl = (data?.source_url || "").trim();
+    if (!sourceUrl) {
+      setCopied("Missing source URL");
+      window.setTimeout(() => setCopied(null), 1500);
+      return;
+    }
+    if (loading) return;
+
+    setLoading(true);
+    setLoadingMessage("Processing...");
+
+    const timeoutId = window.setTimeout(() => {
+      setLoadingMessage("Preparing your video...");
+    }, 2000);
+
+    try {
+      const res = await fetch(apiUrl("/download"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: sourceUrl }),
+      });
+
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.toLowerCase().includes("video")) {
+        const blob = await res.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+
+        const safeTitle = (data?.title || "video").replace(/[^A-Za-z0-9._ -]+/g, "").trim() || "video";
+        const a = document.createElement("a");
+        a.href = downloadUrl;
+        a.download = `${safeTitle.slice(0, 80)}.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+        setCopied("Download started");
+        window.setTimeout(() => setCopied(null), 1500);
+        return;
+      }
+
+      const json = (await res.json()) as unknown;
+      const videoUrl = (json as { video_url?: unknown }).video_url;
+      if (typeof videoUrl === "string" && videoUrl.trim()) {
+        window.open(videoUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      const msg = (json as { message?: unknown }).message;
+      setCopied(typeof msg === "string" && msg.trim() ? msg : "Download failed");
+      window.setTimeout(() => setCopied(null), 1500);
+    } catch {
+      setCopied("Download failed");
+      window.setTimeout(() => setCopied(null), 1500);
+    } finally {
+      window.clearTimeout(timeoutId);
+      setLoading(false);
+      setLoadingMessage(null);
+    }
   }
 
   return (
@@ -122,6 +190,14 @@ export default function DownloadClient({
               </h2>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  disabled={loading}
+                  className="inline-flex h-12 items-center justify-center rounded-2xl bg-zinc-950 px-5 font-semibold text-white transition-colors hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 sm:col-span-2"
+                >
+                  {loading ? loadingMessage || "Processing..." : "Download Video"}
+                </button>
                 {data.video_url ? (
                   <>
                     <a
@@ -220,7 +296,7 @@ export default function DownloadClient({
                 <button
                   type="button"
                   onClick={downloadAnother}
-                  className="inline-flex h-12 items-center justify-center rounded-2xl bg-zinc-950 px-5 font-semibold text-white transition-colors hover:bg-zinc-900 sm:col-span-2"
+                  className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50 sm:col-span-2"
                 >
                   Download Another Video
                 </button>

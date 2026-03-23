@@ -27,7 +27,7 @@ async function fetchExtracted(url: string): Promise<{
     return { data: null, loadError: "Missing NEXT_PUBLIC_API_URL." };
   }
 
-  const res = await fetch(`${apiBaseUrl}/download`, {
+  const res = await fetch(`${apiBaseUrl}/extract`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ url }),

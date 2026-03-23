@@ -3,6 +3,10 @@ import os
 import re
 import hashlib
 import time
+import shutil
+import subprocess
+import tempfile
+import uuid
 from html import unescape
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
@@ -10,6 +14,8 @@ from urllib.request import Request, urlopen
 
 from yt_dlp import YoutubeDL
 from yt_dlp.utils import DownloadError
+
+import hls as hls_mod
 
 
 _USER_AGENT = (
@@ -252,31 +258,67 @@ def _cache_set(url: str, status: int, payload: dict):
         return
 
 
-def handle_download(body: dict) -> tuple[int, dict]:
+def convert_hls_to_mp4(stream_url: str) -> str | None:
+    stream_url = (stream_url or "").strip()
+    if not stream_url:
+        return None
+    if not shutil.which("ffmpeg"):
+        return None
+
+    temp_dir = os.environ.get("TEMP_DIR") or tempfile.gettempdir()
+    filename = f"{uuid.uuid4()}.mp4"
+    output_path = os.path.join(temp_dir, filename)
+
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        stream_url,
+        "-c",
+        "copy",
+        "-bsf:a",
+        "aac_adtstoasc",
+        output_path,
+    ]
+
+    try:
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120, check=False)
+    except Exception:
+        return None
+
+    try:
+        if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            return output_path
+    except Exception:
+        return None
+    return None
+
+
+def handle_extract(body: dict) -> tuple[int, dict]:
     started = time.perf_counter()
 
     url = _normalize_url(body.get("url") if isinstance(body, dict) else "")
     if not url:
         payload = {"error": "MISSING_URL", "message": "Provide a Pinterest URL in the 'url' field."}
-        _log_event({"route": "download", "method": "POST", "status": 400, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
+        _log_event({"route": "extract", "method": "POST", "status": 400, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
         return 400, payload
 
     if not _is_pinterest_url(url):
         payload = {"error": "INVALID_DOMAIN", "message": "Only Pinterest URLs are supported."}
-        _log_event({"route": "download", "method": "POST", "status": 400, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error"), "host": (urlparse(url).hostname or "").lower()})
+        _log_event({"route": "extract", "method": "POST", "status": 400, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error"), "host": (urlparse(url).hostname or "").lower()})
         return 400, payload
 
     cached = _cache_get(url)
     if cached:
         status, payload = cached
-        _log_event({"route": "download", "method": "POST", "status": status, "ms": int((time.perf_counter() - started) * 1000), "cache": "hit"})
+        _log_event({"route": "extract", "method": "POST", "status": status, "ms": int((time.perf_counter() - started) * 1000), "cache": "hit"})
         return status, payload
 
     try:
         fast = _extract_from_html(url)
         if fast.get("video_url"):
             _cache_set(url, 200, fast)
-            _log_event({"route": "download", "method": "POST", "status": 200, "ms": int((time.perf_counter() - started) * 1000), "cache": "miss", "path": "fast_html"})
+            _log_event({"route": "extract", "method": "POST", "status": 200, "ms": int((time.perf_counter() - started) * 1000), "cache": "miss", "path": "fast_html"})
             return 200, fast
     except (HTTPError, URLError):
         pass
@@ -313,17 +355,17 @@ def handle_download(body: dict) -> tuple[int, dict]:
                 )
             payload = {"error": "EXTRACTION_FAILED", "message": message}
             _cache_set(url, 422, payload)
-            _log_event({"route": "download", "method": "POST", "status": 422, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
+            _log_event({"route": "extract", "method": "POST", "status": 422, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
             return 422, payload
         except Exception:
             payload = {"error": "INTERNAL_ERROR", "message": "Unexpected server error while extracting the video."}
             _cache_set(url, 500, payload)
-            _log_event({"route": "download", "method": "POST", "status": 500, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
+            _log_event({"route": "extract", "method": "POST", "status": 500, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
             return 500, payload
     except Exception:
         payload = {"error": "INTERNAL_ERROR", "message": "Unexpected server error while extracting the video."}
         _cache_set(url, 500, payload)
-        _log_event({"route": "download", "method": "POST", "status": 500, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
+        _log_event({"route": "extract", "method": "POST", "status": 500, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
         return 500, payload
 
     if isinstance(info, dict) and info.get("_type") == "playlist" and info.get("entries"):
@@ -334,7 +376,7 @@ def handle_download(body: dict) -> tuple[int, dict]:
     if not isinstance(info, dict):
         payload = {"error": "EXTRACTION_FAILED", "message": "No usable video metadata was returned by the extractor."}
         _cache_set(url, 422, payload)
-        _log_event({"route": "download", "method": "POST", "status": 422, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
+        _log_event({"route": "extract", "method": "POST", "status": 422, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
         return 422, payload
 
     video_url = _pick_best_mp4_url(info)
@@ -351,18 +393,71 @@ def handle_download(body: dict) -> tuple[int, dict]:
                 "stream_url": hls_url,
             }
             _cache_set(url, 422, payload)
-            _log_event({"route": "download", "method": "POST", "status": 422, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
+            _log_event({"route": "extract", "method": "POST", "status": 422, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
             return 422, payload
 
         payload = {"error": "NO_MP4", "message": "No direct MP4 URL could be found for that Pinterest video."}
         _cache_set(url, 422, payload)
-        _log_event({"route": "download", "method": "POST", "status": 422, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
+        _log_event({"route": "extract", "method": "POST", "status": 422, "ms": int((time.perf_counter() - started) * 1000), "error": payload.get("error")})
         return 422, payload
 
     title = info.get("title") or "Pinterest Video"
     thumbnail = info.get("thumbnail")
     payload = {"title": title, "thumbnail": thumbnail, "video_url": video_url}
     _cache_set(url, 200, payload)
-    _log_event({"route": "download", "method": "POST", "status": 200, "ms": int((time.perf_counter() - started) * 1000), "cache": "miss", "path": "yt_dlp"})
+    _log_event({"route": "extract", "method": "POST", "status": 200, "ms": int((time.perf_counter() - started) * 1000), "cache": "miss", "path": "yt_dlp"})
     return 200, payload
+
+
+def handle_download(body: dict, client_ip: str) -> tuple[str, int, object]:
+    started = time.perf_counter()
+
+    status, payload = handle_extract(body)
+    if status == 200 and isinstance(payload, dict) and payload.get("video_url"):
+        return "json", 200, payload
+
+    if not isinstance(payload, dict):
+        return "json", status, payload
+
+    stream_url = payload.get("stream_url")
+    if not isinstance(stream_url, str) or not stream_url.strip():
+        return "json", status, payload
+
+    client_ip = (client_ip or "").strip()
+    if client_ip and hls_mod._is_rate_limited_ip(client_ip):
+        return "json", 429, {"error": "RATE_LIMITED", "message": "Too many requests. Please try again in a minute."}
+
+    try:
+        playlist = hls_mod._fetch_text(stream_url)
+        duration_s = hls_mod._playlist_duration_seconds(playlist)
+        if duration_s and duration_s > hls_mod._MP4_MAX_SECONDS:
+            return "json", 422, {"error": "TOO_LONG", "message": "This video is too long to convert."}
+    except Exception:
+        pass
+
+    mp4_path = convert_hls_to_mp4(stream_url)
+    if not mp4_path:
+        _log_event(
+            {
+                "route": "download",
+                "method": "POST",
+                "status": 500,
+                "ms": int((time.perf_counter() - started) * 1000),
+                "error": "CONVERSION_FAILED",
+            }
+        )
+        return "json", 500, {"error": "CONVERSION_FAILED", "message": "Conversion failed"}
+
+    title = payload.get("title") if isinstance(payload.get("title"), str) else "video"
+    _log_event(
+        {
+            "route": "download",
+            "method": "POST",
+            "status": 200,
+            "ms": int((time.perf_counter() - started) * 1000),
+            "format": "mp4",
+            "kv_rl": _kv_enabled(),
+        }
+    )
+    return "file", 200, {"path": mp4_path, "title": title}
 
