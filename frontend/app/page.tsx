@@ -23,7 +23,15 @@ type StoredData = ExtractResult & {
   source_url?: string;
 };
 
-export default function Home() {
+export type DownloaderLandingProps = {
+  heroTitle?: string;
+  heroDescription?: string;
+};
+
+export function DownloaderLanding({
+  heroTitle = "Pinterest Video Downloader",
+  heroDescription = "Our Pinterest Video Downloader allows you to download videos from Pinterest in HD quality instantly. No login required, no watermark, and completely free.",
+}: DownloaderLandingProps) {
   const [url, setUrl] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [downloadLoading, setDownloadLoading] = useState(false);
@@ -31,6 +39,50 @@ export default function Home() {
   const [result, setResult] = useState<StoredData | null>(null);
 
   const isValidInput = useMemo(() => url.trim().length > 0, [url]);
+  const faqItems = useMemo(
+    () => [
+      {
+        question: "Can I download Pinterest videos in MP4?",
+        answer: "Yes, our tool converts Pinterest videos to MP4 format automatically.",
+      },
+      {
+        question: "Where are files saved?",
+        answer: "Downloads are saved to your browser’s default Downloads folder unless you changed it.",
+      },
+      {
+        question: "Can I download GIFs?",
+        answer: "If Pinterest provides a downloadable asset, we’ll attempt to extract it. Some pins may only be streaming-only.",
+      },
+      {
+        question: "Why do I see HLS instead of MP4?",
+        answer: "Some videos are delivered as HLS streams (.m3u8). In that case we provide an HLS download option.",
+      },
+      {
+        question: "Does it work on mobile?",
+        answer: "Yes. Use a share link from the Pinterest app for best results.",
+      },
+      {
+        question: "Is this affiliated with Pinterest?",
+        answer: "No. This is an independent tool and not affiliated with Pinterest.",
+      },
+    ],
+    [],
+  );
+  const faqSchema = useMemo(
+    () => ({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faqItems.map((item) => ({
+        "@type": "Question",
+        name: item.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: item.answer,
+        },
+      })),
+    }),
+    [faqItems],
+  );
 
   async function handleFetch() {
     const trimmed = url.trim();
@@ -175,11 +227,10 @@ export default function Home() {
           <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-2 lg:items-center">
             <div className="flex flex-col gap-5">
               <h1 className="text-4xl font-semibold tracking-tight text-[#E60023] sm:text-5xl">
-                Pinterest Video Downloader
+                {heroTitle}
               </h1>
               <p className="text-lg leading-relaxed text-zinc-600">
-                Download HD Pinterest Videos, Images, and GIFs for free in 1
-                Click!
+                {heroDescription}
               </p>
               <div className="flex flex-wrap gap-2 text-sm text-zinc-600">
                 <span className="rounded-full border border-zinc-200 bg-white px-3 py-1">
@@ -293,7 +344,7 @@ export default function Home() {
                   rel="noopener noreferrer"
                   className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50 hover:text-[#E60023]"
                 >
-                  Pinterest
+                  Go To Pinterest
                 </a>
 
                 {error ? (
@@ -342,32 +393,17 @@ export default function Home() {
                 </svg>
               </span>
               <h2 className="text-2xl font-semibold tracking-tight text-[#E60023]">
-                How to Download
+                How to Download Pinterest Videos
               </h2>
             </div>
 
-            <div className="mt-8 grid gap-6 lg:grid-cols-2">
-              <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold">
-                  Steps to Download from Mobile App
-                </h3>
-                <ul className="mt-4 list-disc space-y-2 pl-5 text-zinc-600">
-                  <li>Open Pinterest app and tap Share on the post.</li>
-                  <li>Copy link and paste it into the input above.</li>
-                  <li>Tap Download to get the best available format.</li>
-                </ul>
-              </div>
-
-              <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                <h3 className="text-lg font-semibold">
-                  Steps to Download from Desktop
-                </h3>
-                <ul className="mt-4 list-disc space-y-2 pl-5 text-zinc-600">
-                  <li>Open a pin in your browser and copy the URL.</li>
-                  <li>Paste the URL and click Download.</li>
-                  <li>Open the direct link if your browser blocks auto-save.</li>
-                </ul>
-              </div>
+            <div className="mt-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <ol className="list-decimal space-y-2 pl-5 text-zinc-600">
+                <li>Copy the Pinterest video link</li>
+                <li>Paste it into the input box</li>
+                <li>Click the Download button</li>
+                <li>Your video will be downloaded in MP4 format</li>
+              </ol>
             </div>
           </div>
         </section>
@@ -403,49 +439,15 @@ export default function Home() {
                 </h2>
               </div>
 
-              <div className="mt-8 grid gap-6 lg:grid-cols-3">
-                <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold">
-                    Supported Video Quality &amp; Formats
-                  </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-                    We attempt to extract the highest quality MP4 available. If a
-                    pin is streaming-only, we provide an HLS download option.
-                  </p>
-                  <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-zinc-600">
-                    <li>Best MP4 (when available)</li>
-                    <li>HLS (.m3u8) download as .ts</li>
-                    <li>Works with pin and share links</li>
-                  </ul>
-                </div>
-
-                <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold">Is it Safe to Use?</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-                    Yes. No account required. Paste a link and download. Always
-                    respect copyright and only download content you have rights to
-                    use.
-                  </p>
-                  <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-zinc-600">
-                    <li>No login required</li>
-                    <li>No tracking scripts added here</li>
-                    <li>Runs on modern browsers</li>
-                  </ul>
-                </div>
-
-                <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold">Fast &amp; Simple</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-                    Clean UI, one-click download flow, and clear fallbacks when a
-                    pin doesn’t provide a direct MP4 link.
-                  </p>
-                  <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-zinc-600">
-                    <li>Mobile-first design</li>
-                    <li>Clear error messages</li>
-                    <li>Copy commands for power users</li>
-                  </ul>
-                </div>
-              </div>
+            <div className="mt-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <ul className="list-disc space-y-2 pl-5 text-zinc-600">
+                <li>Download videos in HD quality</li>
+                <li>Supports MP4 format</li>
+                <li>No login required</li>
+                <li>Fast and secure processing</li>
+                <li>Works on mobile and desktop</li>
+              </ul>
+            </div>
             </div>
           </div>
         </section>
@@ -454,28 +456,13 @@ export default function Home() {
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="rounded-3xl bg-white/70 p-6 sm:p-10">
               <h2 className="text-2xl font-semibold tracking-tight text-[#E60023]">
-                What&apos;s New
+                Why Use Our Pinterest Downloader?
               </h2>
-              <div className="mt-8 grid gap-4 lg:grid-cols-3">
-                <div className="rounded-3xl bg-blue-100 p-6 text-blue-900 shadow-sm">
-                <h3 className="text-base font-semibold">Update</h3>
-                <p className="mt-2 text-sm leading-relaxed">
-                  Improved error handling and clearer messages for failed pins.
-                </p>
-              </div>
-                <div className="rounded-3xl bg-green-100 p-6 text-green-900 shadow-sm">
-                <h3 className="text-base font-semibold">Fix</h3>
-                <p className="mt-2 text-sm leading-relaxed">
-                  Fixed GIF downloading issues and improved extraction fallback.
-                </p>
-              </div>
-                <div className="rounded-3xl bg-orange-100 p-6 text-orange-900 shadow-sm">
-                <h3 className="text-base font-semibold">New</h3>
-                <p className="mt-2 text-sm leading-relaxed">
-                  Added in-app HLS download when direct MP4 isn&apos;t available.
-                </p>
-              </div>
-              </div>
+              <p className="mt-4 text-sm leading-relaxed text-zinc-700">
+                Unlike other tools, our downloader automatically converts streaming
+                videos into MP4 format, ensuring you always get a downloadable
+                file.
+              </p>
             </div>
           </div>
         </section>
@@ -512,46 +499,21 @@ export default function Home() {
                 </h2>
               </div>
 
-              <dl className="mt-8 grid gap-6 lg:grid-cols-2">
-                <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm transition-colors hover:border-[#E60023]/40">
-                  <dt className="text-lg font-semibold">Where are files saved?</dt>
-                  <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
-                    Downloads are saved to your browser’s default Downloads folder
-                    unless you changed it.
-                  </dd>
-                </div>
-                <div className="rounded-3xl border border-zinc-200 bg-gray-50 p-6 shadow-sm transition-colors hover:border-[#E60023]/40">
-                  <dt className="text-lg font-semibold">Can I download GIFs?</dt>
-                  <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
-                    If Pinterest provides a downloadable asset, we’ll attempt to
-                    extract it. Some pins may only be streaming-only.
-                  </dd>
-                </div>
-                <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm transition-colors hover:border-[#E60023]/40">
-                  <dt className="text-lg font-semibold">
-                    Why do I see HLS instead of MP4?
-                  </dt>
-                  <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
-                    Some videos are delivered as HLS streams (.m3u8). In that case
-                    we provide an HLS download option.
-                  </dd>
-                </div>
-                <div className="rounded-3xl border border-zinc-200 bg-gray-50 p-6 shadow-sm transition-colors hover:border-[#E60023]/40">
-                  <dt className="text-lg font-semibold">Does it work on mobile?</dt>
-                  <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
-                    Yes. Use a share link from the Pinterest app for best results.
-                  </dd>
-                </div>
-                <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm transition-colors hover:border-[#E60023]/40 lg:col-span-2">
-                  <dt className="text-lg font-semibold">
-                    Is this affiliated with Pinterest?
-                  </dt>
-                  <dd className="mt-2 text-sm leading-relaxed text-zinc-600">
-                    No. This is an independent tool and not affiliated with
-                    Pinterest.
-                  </dd>
-                </div>
-              </dl>
+              <div className="mt-8 grid gap-6 lg:grid-cols-2">
+                {faqItems.map((item, index) => (
+                  <div
+                    key={item.question}
+                    className={`rounded-3xl border border-zinc-200 p-6 shadow-sm transition-colors hover:border-[#E60023]/40 ${
+                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    } ${index === faqItems.length - 1 ? "lg:col-span-2" : ""}`}
+                  >
+                    <h3 className="text-lg font-semibold">{item.question}</h3>
+                    <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                      {item.answer}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -569,6 +531,11 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
       </main>
 
       <footer className="border-t border-zinc-700 bg-gradient-to-b from-gray-800 to-gray-900 text-zinc-100">
@@ -600,4 +567,8 @@ export default function Home() {
       </footer>
     </div>
   );
+}
+
+export default function Home() {
+  return <DownloaderLanding />;
 }
