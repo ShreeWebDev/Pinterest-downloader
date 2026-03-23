@@ -14,7 +14,10 @@ type StoredData = ExtractResult & {
 };
 
 function getApiBaseUrl() {
-  const raw = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "";
+  const raw =
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.API_URL ||
+    "https://pinterest-downloader-production-5d58.up.railway.app/";
   return raw.trim().replace(/\/+$/, "");
 }
 

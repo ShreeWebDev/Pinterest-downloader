@@ -15,7 +15,9 @@ type StoredData = ExtractResult & {
   source_url?: string;
 };
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/+$/, "");
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://pinterest-downloader-production-5d58.up.railway.app/")
+  .trim()
+  .replace(/\/+$/, "");
 
 function apiUrl(path: string) {
   if (!API_BASE) return path;
@@ -56,11 +58,6 @@ export default function DownloadClient({
   }
 
   async function handleDownload() {
-    if (!API_BASE) {
-      setCopied("Missing NEXT_PUBLIC_API_URL");
-      window.setTimeout(() => setCopied(null), 1500);
-      return;
-    }
     const sourceUrl = (data?.source_url || "").trim();
     if (!sourceUrl) {
       setCopied("Missing source URL");
