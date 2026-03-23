@@ -29,8 +29,8 @@ export type DownloaderLandingProps = {
 };
 
 export function DownloaderLanding({
-  heroTitle = "Pinterest Video Downloader",
-  heroDescription = "Our Pinterest Video Downloader allows you to download videos from Pinterest in HD quality instantly. No login required, no watermark, and completely free.",
+  heroTitle = "Pinterest Video Downloader – Download Pinterest Videos in HD (MP4)",
+  heroDescription = "Our Pinterest Video Downloader helps you download Pinterest videos in HD quality instantly. No login required, no watermark, and completely free. Just paste your Pinterest video link and download it in MP4 format with a single click.",
 }: DownloaderLandingProps) {
   const [url, setUrl] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -41,6 +41,28 @@ export function DownloaderLanding({
   const isValidInput = useMemo(() => url.trim().length > 0, [url]);
   const faqItems = useMemo(
     () => [
+      {
+        question: "Can I download Pinterest videos in MP4 format?",
+        answer:
+          "Yes, our tool automatically converts Pinterest videos into MP4 format for easy downloading.",
+      },
+      {
+        question: "Is this Pinterest downloader free?",
+        answer: "Yes, it is completely free with no hidden charges.",
+      },
+      {
+        question: "Why do some videos take longer to download?",
+        answer:
+          "Some Pinterest videos use streaming format (HLS). These videos are converted into MP4 before downloading.",
+      },
+      {
+        question: "Can I use this tool on mobile?",
+        answer: "Yes, our downloader works perfectly on mobile devices.",
+      },
+      {
+        question: "Do I need to install any software?",
+        answer: "No, everything works directly in your browser.",
+      },
       {
         question: "Can I download Pinterest videos in MP4?",
         answer: "Yes, our tool converts Pinterest videos to MP4 format automatically.",
@@ -67,21 +89,6 @@ export function DownloaderLanding({
       },
     ],
     [],
-  );
-  const faqSchema = useMemo(
-    () => ({
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      mainEntity: faqItems.map((item) => ({
-        "@type": "Question",
-        name: item.question,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: item.answer,
-        },
-      })),
-    }),
-    [faqItems],
   );
 
   async function handleFetch() {
@@ -398,6 +405,9 @@ export function DownloaderLanding({
             </div>
 
             <div className="mt-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <p className="text-sm leading-relaxed text-zinc-700">
+                Follow these simple steps to download any Pinterest video:
+              </p>
               <ol className="list-decimal space-y-2 pl-5 text-zinc-600">
                 <li>Copy the Pinterest video link</li>
                 <li>Paste it into the input box</li>
@@ -435,19 +445,55 @@ export function DownloaderLanding({
                   </svg>
                 </span>
                 <h2 className="text-2xl font-semibold tracking-tight text-[#E60023]">
-                  Features
+                  Features of Our Pinterest Video Downloader
                 </h2>
               </div>
 
             <div className="mt-8 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
               <ul className="list-disc space-y-2 pl-5 text-zinc-600">
-                <li>Download videos in HD quality</li>
-                <li>Supports MP4 format</li>
-                <li>No login required</li>
-                <li>Fast and secure processing</li>
-                <li>Works on mobile and desktop</li>
+                <li>Download Pinterest videos in HD quality (1080p supported)</li>
+                <li>Automatic conversion to MP4 format</li>
+                <li>No login or registration required</li>
+                <li>Works on mobile, tablet, and desktop</li>
+                <li>Fast processing with secure servers</li>
+                <li>Supports streaming (HLS) videos conversion</li>
+                <li>Free to use with no hidden charges</li>
               </ul>
             </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-12 sm:py-16">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <h2 className="text-2xl font-semibold tracking-tight text-[#E60023]">Supported Video Quality &amp; Formats</h2>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-700">
+                Our tool detects the best available quality automatically. If a direct MP4 file is available, you will get it instantly. If the video is streaming-only, we convert it to MP4 for you.
+              </p>
+              <ul className="mt-4 list-disc space-y-2 pl-5 text-zinc-600">
+                <li>HD 1080p videos (when available)</li>
+                <li>720p and lower resolutions</li>
+                <li>MP4 format (default output)</li>
+                <li>HLS streaming videos converted to MP4</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-12 sm:py-16">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <h2 className="text-2xl font-semibold tracking-tight text-[#E60023]">Works on All Devices</h2>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-700">
+                Our Pinterest Video Downloader works seamlessly on all devices, including Android, iPhone, tablets, and desktop computers. No app installation is required.
+              </p>
+              <ul className="mt-4 list-disc space-y-2 pl-5 text-zinc-600">
+                <li>Android phones</li>
+                <li>iPhone &amp; iPad</li>
+                <li>Windows &amp; Mac</li>
+                <li>All modern browsers</li>
+              </ul>
             </div>
           </div>
         </section>
@@ -459,10 +505,27 @@ export function DownloaderLanding({
                 Why Use Our Pinterest Downloader?
               </h2>
               <p className="mt-4 text-sm leading-relaxed text-zinc-700">
-                Unlike other tools, our downloader automatically converts streaming
-                videos into MP4 format, ensuring you always get a downloadable
-                file.
+                Unlike other Pinterest downloaders, our tool automatically converts streaming videos into downloadable MP4 files. This means you don’t have to deal with complex formats like M3U8 or TS files.
               </p>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-700">
+                We provide a clean and simple user experience with one-click download functionality, ensuring that you always get the best quality video available.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-12 sm:py-16">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <h2 className="text-2xl font-semibold tracking-tight text-[#E60023]">Is It Safe to Use?</h2>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-700">
+                Yes, our tool is completely safe to use. We do not store your data or downloaded videos. Everything is processed securely and instantly.
+              </p>
+              <ul className="mt-4 list-disc space-y-2 pl-5 text-zinc-600">
+                <li>No login required</li>
+                <li>No data tracking</li>
+                <li>No malware or harmful scripts</li>
+              </ul>
             </div>
           </div>
         </section>
@@ -495,7 +558,7 @@ export function DownloaderLanding({
                   </svg>
                 </span>
                 <h2 className="text-2xl font-semibold tracking-tight text-[#E60023]">
-                  FAQ
+                  Frequently Asked Questions
                 </h2>
               </div>
 
@@ -518,6 +581,27 @@ export function DownloaderLanding({
           </div>
         </section>
 
+        <section className="pb-12 sm:pb-16">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+              <h2 className="text-2xl font-semibold tracking-tight text-[#E60023]">Helpful Links</h2>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <a
+                  href="/download-pinterest-video"
+                  className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-50 hover:text-[#E60023]"
+                >
+                  Download Pinterest Video
+                </a>
+                <a
+                  href="/pinterest-video-download-hd"
+                  className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 transition-colors hover:bg-zinc-50 hover:text-[#E60023]"
+                >
+                  Pinterest HD Video Download
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
         <section id="blog" className="pb-12 sm:pb-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -532,10 +616,6 @@ export function DownloaderLanding({
           </div>
         </section>
 
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
-        />
       </main>
 
       <footer className="border-t border-zinc-700 bg-gradient-to-b from-gray-800 to-gray-900 text-zinc-100">
