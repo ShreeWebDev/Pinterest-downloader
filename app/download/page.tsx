@@ -91,6 +91,10 @@ function safeFileStem(title: string) {
   return cleaned || "pinterest-video";
 }
 
+function proxiedUrl(url: string) {
+  return `/api/proxy?url=${encodeURIComponent(url)}`;
+}
+
 export default function DownloadPage() {
   const router = useRouter();
   const [data] = useState<StoredData | null>(() => {
@@ -223,22 +227,30 @@ export default function DownloadPage() {
       };
 
       const masterUrl = data.stream_url;
-      const masterRes = await fetch(masterUrl, { cache: "no-store" });
+      const masterRes = await fetch(proxiedUrl(masterUrl), { cache: "no-store" });
       if (!masterRes.ok) {
         throw new Error("Failed to fetch master playlist.");
       }
       const masterText = await masterRes.text();
       const bestVariantUrl = pickBestVariantUrlFromMaster(masterText, masterUrl);
 
-      const streamRes = await fetch(bestVariantUrl, { cache: "no-store" });
+      const streamRes = await fetch(proxiedUrl(bestVariantUrl), { cache: "no-store" });
       if (!streamRes.ok) {
         throw new Error("Failed to fetch stream playlist.");
       }
       const streamText = await streamRes.text();
-      const localPlaylist = absolutizePlaylistText(streamText, bestVariantUrl);
+      const absolutePlaylist = absolutizePlaylistText(streamText, bestVariantUrl);
+      const localPlaylist = absolutePlaylist.replace(
+        /^(?!#)(.+)$/gm,
+        (m) => proxiedUrl(m.trim())
+      );
+      const localPlaylistFinal = localPlaylist.replace(
+        /URI="([^"]+)"/g,
+        (_, uri: string) => `URI="${proxiedUrl(uri)}"`
+      );
 
       const enc = new TextEncoder();
-      await ffmpeg.writeFile("playlist.m3u8", enc.encode(localPlaylist));
+      await ffmpeg.writeFile("playlist.m3u8", enc.encode(localPlaylistFinal));
 
       await ffmpeg.exec([
         "-protocol_whitelist",
@@ -312,7 +324,7 @@ export default function DownloadPage() {
             <div className="rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm sm:p-7">
               {data.thumbnail ? (
                 <img
-                  src={data.thumbnail}
+                  src={proxiedUrl(data.thumbnail)}
                   alt={data.title}
                   className="aspect-[4/3] w-full rounded-2xl border border-zinc-200 object-cover"
                 />
