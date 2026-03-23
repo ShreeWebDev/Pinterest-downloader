@@ -12,14 +12,27 @@ function apiUrl(path: string) {
   return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+type ExtractResult = {
+  title: string;
+  thumbnail?: string | null;
+  video_url?: string;
+  stream_url?: string;
+};
+
+type StoredData = ExtractResult & {
+  source_url?: string;
+};
+
 export default function Home() {
   const [url, setUrl] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [downloadLoading, setDownloadLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<StoredData | null>(null);
 
   const isValidInput = useMemo(() => url.trim().length > 0, [url]);
 
-  async function handleDownload() {
+  async function handleFetch() {
     const trimmed = url.trim();
     if (!trimmed) {
       setError("Please paste a Pinterest link.");
@@ -29,12 +42,68 @@ export default function Home() {
     if (loading) return;
     setLoading(true);
     setError(null);
+    setResult(null);
 
+    try {
+      const res = await fetch(apiUrl("/extract"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmed }),
+      });
+
+      const contentType = res.headers.get("content-type") || "";
+      const isJson = contentType.toLowerCase().includes("application/json");
+      const rawBody = await res.text();
+      const payload = isJson ? (JSON.parse(rawBody) as unknown) : rawBody;
+
+      if (!res.ok) {
+        const msg = typeof payload === "object" && payload !== null ? (payload as { message?: unknown }).message : null;
+        setError(typeof msg === "string" && msg.trim() ? msg : "Request failed.");
+        return;
+      }
+
+      if (typeof payload !== "object" || payload === null) {
+        setError("Unexpected response from the server.");
+        return;
+      }
+
+      const title = (payload as { title?: unknown }).title;
+      if (typeof title !== "string" || !title.trim()) {
+        setError("Unexpected response from the server.");
+        return;
+      }
+
+      const extracted: StoredData = {
+        title,
+        thumbnail: typeof (payload as { thumbnail?: unknown }).thumbnail === "string" ? ((payload as { thumbnail?: unknown }).thumbnail as string) : null,
+        video_url: typeof (payload as { video_url?: unknown }).video_url === "string" ? ((payload as { video_url?: unknown }).video_url as string) : undefined,
+        stream_url: typeof (payload as { stream_url?: unknown }).stream_url === "string" ? ((payload as { stream_url?: unknown }).stream_url as string) : undefined,
+        source_url: trimmed,
+      };
+
+      setResult(extracted);
+    } catch {
+      setError("Request failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDownload() {
+    const sourceUrl = (result?.source_url || url).trim();
+    if (!sourceUrl) {
+      setError("Please paste a Pinterest link.");
+      return;
+    }
+    if (downloadLoading) return;
+
+    setDownloadLoading(true);
+    setError(null);
     try {
       const res = await fetch(apiUrl("/download"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: trimmed }),
+        body: JSON.stringify({ url: sourceUrl }),
       });
 
       const contentType = res.headers.get("content-type") || "";
@@ -64,8 +133,16 @@ export default function Home() {
     } catch {
       setError("Download failed.");
     } finally {
-      setLoading(false);
+      setDownloadLoading(false);
     }
+  }
+
+  function reset() {
+    setUrl("");
+    setResult(null);
+    setError(null);
+    setLoading(false);
+    setDownloadLoading(false);
   }
 
   return (
@@ -122,7 +199,7 @@ export default function Home() {
                 className="flex flex-col gap-4"
                 onSubmit={(e) => {
                   e.preventDefault();
-                  handleDownload();
+                  handleFetch();
                 }}
               >
                 <label className="text-sm font-medium text-zinc-900">
@@ -141,7 +218,7 @@ export default function Home() {
                   />
                   <button
                     type="button"
-                    onClick={handleDownload}
+                    onClick={handleFetch}
                     disabled={!isValidInput || loading}
                     className="inline-flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-[#E60023] px-7 font-semibold text-white shadow-sm transition-colors hover:bg-[#d0001f] disabled:cursor-not-allowed disabled:bg-zinc-300 sm:w-auto"
                   >
@@ -165,6 +242,69 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {result ? (
+          <section className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
+            <div className="grid gap-6 rounded-3xl border border-zinc-200 bg-white p-5 shadow-lg shadow-red-100 sm:p-7 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <h2 className="mb-4 text-lg font-semibold text-zinc-950">
+                  {result.title}
+                </h2>
+                {result.video_url ? (
+                  <video
+                    src={result.video_url}
+                    controls
+                    playsInline
+                    className="aspect-video w-full rounded-2xl border border-zinc-200 bg-black"
+                    poster={result.thumbnail || undefined}
+                  />
+                ) : result.thumbnail ? (
+                  <img
+                    src={result.thumbnail}
+                    alt={result.title}
+                    className="aspect-video w-full rounded-2xl border border-zinc-200 object-cover"
+                  />
+                ) : (
+                  <div className="aspect-video w-full rounded-2xl border border-zinc-200 bg-zinc-100" />
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  disabled={downloadLoading}
+                  className="inline-flex h-12 items-center justify-center rounded-2xl bg-zinc-950 px-5 font-semibold text-white transition-colors hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {downloadLoading ? "Processing..." : "Download"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
+                >
+                  Download More Video
+                </button>
+
+                <a
+                  href={result.source_url || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
+                >
+                  Pinterest
+                </a>
+
+                {error ? (
+                  <div className="mt-1 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    {error}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         <section
           aria-label="Advertisement"
