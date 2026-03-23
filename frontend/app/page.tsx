@@ -269,12 +269,12 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 lg:justify-center">
                 <button
                   type="button"
                   onClick={handleDownload}
                   disabled={downloadLoading}
-                  className="inline-flex h-12 items-center justify-center rounded-2xl bg-zinc-950 px-5 font-semibold text-white transition-colors hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-12 items-center justify-center rounded-2xl bg-[#E60023] px-5 font-semibold text-white transition-colors hover:bg-[#d0001f] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {downloadLoading ? "Processing..." : "Download"}
                 </button>
@@ -282,7 +282,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={reset}
-                  className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
+                  className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50 hover:text-[#E60023]"
                 >
                   Download More Video
                 </button>
@@ -291,7 +291,7 @@ export default function Home() {
                   href={result.source_url || "#"}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50"
+                  className="inline-flex h-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 font-semibold text-zinc-900 transition-colors hover:bg-zinc-50 hover:text-[#E60023]"
                 >
                   Pinterest
                 </a>
