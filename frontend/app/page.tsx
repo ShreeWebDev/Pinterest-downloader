@@ -1,27 +1,71 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "https://pinterest-downloader-production-5d58.up.railway.app/")
+  .trim()
+  .replace(/\/+$/, "");
+
+function apiUrl(path: string) {
+  if (!API_BASE) return path;
+  return `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+}
 
 export default function Home() {
   const [url, setUrl] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
 
   const isValidInput = useMemo(() => url.trim().length > 0, [url]);
 
-  function handleDownload() {
+  async function handleDownload() {
     const trimmed = url.trim();
     if (!trimmed) {
       setError("Please paste a Pinterest link.");
       return;
     }
 
+    if (loading) return;
     setLoading(true);
     setError(null);
-    router.push(`/download?url=${encodeURIComponent(trimmed)}`);
+
+    try {
+      const res = await fetch(apiUrl("/download"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmed }),
+      });
+
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.toLowerCase().includes("video")) {
+        const blob = await res.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = downloadUrl;
+        a.download = "video.mp4";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+        return;
+      }
+
+      const json = (await res.json()) as unknown;
+      const videoUrl = (json as { video_url?: unknown }).video_url;
+      if (typeof videoUrl === "string" && videoUrl.trim()) {
+        window.open(videoUrl, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      const msg = (json as { message?: unknown }).message;
+      setError(typeof msg === "string" && msg.trim() ? msg : "Download failed.");
+    } catch {
+      setError("Download failed.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
