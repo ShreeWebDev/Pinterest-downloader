@@ -423,6 +423,26 @@ def handle_download(body: dict, client_ip: str) -> tuple[str, int, object]:
     if not isinstance(stream_url, str) or not stream_url.strip():
         return "json", status, payload
 
+    if not shutil.which("ffmpeg"):
+        _log_event(
+            {
+                "route": "download",
+                "method": "POST",
+                "status": 501,
+                "ms": int((time.perf_counter() - started) * 1000),
+                "error": "FFMPEG_NOT_AVAILABLE",
+            }
+        )
+        return (
+            "json",
+            501,
+            {
+                "error": "FFMPEG_NOT_AVAILABLE",
+                "message": "Server-side MP4 conversion is not available on this deployment (ffmpeg missing).",
+                "stream_url": stream_url,
+            },
+        )
+
     client_ip = (client_ip or "").strip()
     if client_ip and hls_mod._is_rate_limited_ip(client_ip):
         return "json", 429, {"error": "RATE_LIMITED", "message": "Too many requests. Please try again in a minute."}
@@ -446,7 +466,15 @@ def handle_download(body: dict, client_ip: str) -> tuple[str, int, object]:
                 "error": "CONVERSION_FAILED",
             }
         )
-        return "json", 500, {"error": "CONVERSION_FAILED", "message": "Conversion failed"}
+        return (
+            "json",
+            500,
+            {
+                "error": "CONVERSION_FAILED",
+                "message": "Conversion failed",
+                "stream_url": stream_url,
+            },
+        )
 
     title = payload.get("title") if isinstance(payload.get("title"), str) else "video"
     _log_event(
